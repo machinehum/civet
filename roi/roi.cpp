@@ -29,7 +29,7 @@ using namespace std;
 Mat image;
 Mat image2;
 Mat image3;
-float max_height = 800;
+int max_height = 800;
 float scale_factor = 1;
 int roi_x0=0;
 int roi_y0=0;
@@ -114,46 +114,49 @@ int main(int argc, char** argv)
   struct stat filestat;
   int c;
 
-  while ((c = getopt (argc, argv, "m:u:p:n:h:x:y:")) != -1)
-    switch (c)
-      {
-      case 'm':
-        pos_directory = optarg;
-        break;
-      case 'u':
-        neg_directory = optarg;
-        break;
-      case 'p':
-        positive_file = optarg;
-        break;
-      case 'n':
-        negative_file = optarg;
-        break;
-      case 'h':
-        max_height = std::stod(optarg);
-        break;
-      case 'x':
-        aspect_x = std::stoi(optarg);
-        break;
-      case 'y':
-        aspect_y = std::stoi(optarg);
-        break;
-      case '?':
-        if (optopt == 'd' || optopt == 'p' || optopt == 'n')
-          fprintf (stderr, "Option -%c requires an argument.\n", optopt);
-        else if (isprint (optopt))
-          fprintf (stderr, "Unknown option `-%c'.\n", optopt);
-        else
-          fprintf (stderr,
-                   "Unknown option character `\\x%x'.\n",
-                   optopt);
-        return 1;
-      default:
-        abort ();
-      }
-
-  if ( argv[optind] != NULL ) 
-    input_directory = argv[optind];
+  while (optind < argc) {
+    if ((c = getopt(argc, argv, "m:u:p:n:h:x:y:")) != -1) 
+      switch (c)
+        {
+        case 'm':
+          pos_directory = optarg;
+          break;
+        case 'u':
+          neg_directory = optarg;
+          break;
+        case 'p':
+          positive_file = optarg;
+          break;
+        case 'n':
+          negative_file = optarg;
+          break;
+        case 'h':
+          max_height = std::stoi(optarg);
+          break;
+        case 'x':
+          aspect_x = std::stoi(optarg);
+          break;
+        case 'y':
+          aspect_y = std::stoi(optarg);
+          break;
+        case '?':
+          if (optopt == 'd' || optopt == 'p' || optopt == 'n')
+            fprintf (stderr, "Option -%c requires an argument.\n", optopt);
+          else if (isprint (optopt))
+            fprintf (stderr, "Unknown option `-%c'.\n", optopt);
+          else
+            fprintf (stderr,
+                     "Unknown option character `\\x%x'.\n",
+                     optopt);
+          return 1;
+        default:
+          abort ();
+        }
+    else {
+      input_directory = argv[optind];
+      optind++;
+    }    
+  }
 
   pos_directory = input_directory + "/" + pos_directory;
   neg_directory = input_directory + "/" + neg_directory;
@@ -225,9 +228,9 @@ int main(int argc, char** argv)
       Size sz = image.size();
       if ( sz.height > max_height ) {
         if (sz.width > sz.height) {
-          scale_factor = max_height / sz.width;
+          scale_factor = (float)max_height / (float)sz.width;
         } else {
-          scale_factor = max_height / sz.height;
+          scale_factor = (float)max_height / (float)sz.height;
         }
         resize(image, image3, Size(), scale_factor, scale_factor, INTER_AREA);
       } else {
@@ -258,9 +261,9 @@ int main(int argc, char** argv)
         break;
       }
     }
-    while(iKey!=98);
+    while(iKey!=97);
 
-    if (iKey==98) {
+    if (iKey==97) {
       if (numOfRec > 0) {
         positives << strPrefix << " "<< numOfRec << strPostfix <<"\n";
         destPath = pos_directory + "/" + strPrefix;  

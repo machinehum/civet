@@ -17,25 +17,18 @@ int main (int argc, char** argv) {
 
     printf("{\n");
     printf("\"file\": %s,\n", argv[1]); 
-    printf("\"count\": %zd", faces.size());
+    printf("\"count\": %zd,\n", faces.size());
+    printf("\"objects\": [\n");
     
     for (int i = 0; i < faces.size(); i++) {
       Rect r = faces[i];
-      if ( i == 0 ) {
-        printf(",\n");
-      }
-      printf("\"object\": {\n");
-      printf("\t\"x\": %d,\n", r.x);
-      printf("\t\"y\": %d,\n", r.y);
-      printf("\t\"width\": %d,\n", r.width);
-      printf("\t\"height\": %d\n", r.height);
+      printf("\t{\"x\": %d, \"y\": %d, \"width\": %d, \"height\": %d }", r.x, r.y, r.width, r.height);
       if (i < (faces.size() - 1)) {
-        printf("},\n");
-      } else {
-        printf("}\n");
+        printf(",\n");
       }
     }
  
+    printf("\n\t]");
     printf("\n}\n");
   
     if ( argv[3] && !strcmp(argv[3], "-i") ) {
