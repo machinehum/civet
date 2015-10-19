@@ -6,7 +6,7 @@ ALL = roi
 all: $(ALL)
 
 roi: roi.o
-	$(CC) $(LDFLAGS) -o $@ $^
+	$(CC) -o $@ $^ $(LDFLAGS)
 
 roi.o: roi.cpp
 	$(CC) -c roi.cpp
