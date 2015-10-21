@@ -204,8 +204,9 @@ int main(int argc, char** argv)
     if ( stat( relPath.c_str(), &filestat ) == -1 ) continue;
     if (S_ISDIR( filestat.st_mode )) continue;
 
-    strPostfix="";
-    numOfRec=0;
+    strPostfix = "";
+    numOfRec = 0;
+    scale_factor = 1;
 
     if(strcmp(dir_entry_p->d_name, ""))
       fprintf(stderr, "Examining file %s\n", dir_entry_p->d_name);
@@ -255,9 +256,9 @@ int main(int argc, char** argv)
           printf("   %d. rect x=%d\ty=%d\tx2h=%d\ty2=%d\n",numOfRec,roi_x0,roi_y0,roi_x1,roi_y1);
 #endif
 	  strPostfix += " " + to_string( int( min(roi_x0,roi_x1) / scale_factor ) ) + " " + 
-                              to_string( int( min(roi_y0,roi_y1) / scale_factor ) ) + " " +
-                              to_string( int( ( abs(roi_x1 - roi_x0) ) / scale_factor ) ) + " " + 
-                              to_string( int( ( abs(roi_y1 - roi_y0) ) / scale_factor ) );
+                        to_string( int( min(roi_y0,roi_y1) / scale_factor ) ) + " " +
+                        to_string( int( ( abs(roi_x1 - roi_x0) ) / scale_factor ) ) + " " + 
+                        to_string( int( ( abs(roi_y1 - roi_y0) ) / scale_factor ) );
         break;
       }
     }
