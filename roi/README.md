@@ -31,15 +31,19 @@ or the C API, is very likely to cause you pain.
 	The directory that object-marker will scan for images to be marked.
 	Defaults to the current working directory.
 
+`-o <output-directory>`
+  The directory where output will be written. 
+  Defaults to the current working directory.
+
 `-m <marked-directory>`
 	The directory to which images will be moved if ROIs have been marked
  	on them ("Positive" images) *relative to* `<input-directory>`.
-	Defaults to <input-directory>/marked
+	Defaults to <output-directory>/marked
 
 `-u <unmarked-directory>`
   The directory to which images will be moved if ROIs have NOT been marked
   on them ("Negative" images) *relative to* `<input-directory>`.
-  Defaults to <input-directory>/negative
+  Defaults to <output-directory>/negative
 
 `-p <positive-file>`
 	The file to which positive file paths, and ROI data, will be written
@@ -69,7 +73,7 @@ or the C API, is very likely to cause you pain.
 - The rectangle will now turn green to indicate that it is set, and ready for you to 
   confirm. 
 - To confirm and record this ROI, press `<space bar>`.
-- When you are done selecting ROIs on the image, press *b* to move to the next image. 
+- When you are done selecting ROIs on the image, press *a* to move to the next image. 
   This also triggers the ROIs, if any, to be written to file, and moves the image to
   either the "marked" or "negative" directory (depending on whether any ROIs were
   marked). 

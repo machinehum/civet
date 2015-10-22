@@ -94,6 +94,14 @@ void on_mouse(int event,int x,int y,int flag, void *param)
         rectangle(image2,cvPoint( roi_x0, roi_y0 ),cvPoint( mod_x, mod_y ),CV_RGB(255,0,100),1);
         imshow(window_name,image2);
     }
+    if ( event == EVENT_LBUTTONDBLCLK )
+    {
+      roi_x0 = 0;
+      roi_x1 = 0;
+      roi_y0 = 0;
+      roi_y1 = 0;
+      startDraw = 0;
+    }
 
 }
 
@@ -106,7 +114,8 @@ int main(int argc, char** argv)
   string destPath;
 
   string input_directory = ".";
-  string pos_directory = "marked";
+  string output_directory = ".";
+  string pos_directory = "positive";
   string neg_directory = "negative";
   string positive_file = "pos.txt";
   string negative_file = "neg.txt";
@@ -115,9 +124,12 @@ int main(int argc, char** argv)
   int c;
 
   while (optind < argc) {
-    if ((c = getopt(argc, argv, "m:u:p:n:h:x:y:")) != -1) 
+    if ((c = getopt(argc, argv, "o:m:u:p:n:h:x:y:")) != -1) 
       switch (c)
         {
+        case 'o': 
+          output_directory = optarg;
+          break;
         case 'm':
           pos_directory = optarg;
           break;
@@ -155,11 +167,11 @@ int main(int argc, char** argv)
     else {
       input_directory = argv[optind];
       optind++;
-    }    
+    }
   }
 
-  pos_directory = input_directory + "/" + pos_directory;
-  neg_directory = input_directory + "/" + neg_directory;
+  pos_directory = output_directory + "/" + pos_directory;
+  neg_directory = output_directory + "/" + neg_directory;
   positive_file = pos_directory + "/" + positive_file;
   negative_file = neg_directory + "/" + negative_file;
 
@@ -205,6 +217,11 @@ int main(int argc, char** argv)
     if (S_ISDIR( filestat.st_mode )) continue;
 
     strPostfix = "";
+    roi_x0 = 0;
+    roi_x1 = 0;
+    roi_y0 = 0;
+    roi_y1 = 0;
+    startDraw = 0;
     numOfRec = 0;
     scale_factor = 1;
 
@@ -228,11 +245,7 @@ int main(int argc, char** argv)
       // Use scratch version of image for display, scaling down if necessary.
       Size sz = image.size();
       if ( sz.height > max_height ) {
-        if (sz.width > sz.height) {
-          scale_factor = (float)max_height / (float)sz.width;
-        } else {
-          scale_factor = (float)max_height / (float)sz.height;
-        }
+        scale_factor = (float)max_height / (float)sz.height;
         resize(image, image3, Size(), scale_factor, scale_factor, INTER_AREA);
       } else {
         image3 = image.clone();
@@ -251,14 +264,15 @@ int main(int argc, char** argv)
           closedir(dir_p);
           return 0;
         case 32:
-          numOfRec++;
-#ifdef DEBUG
-          printf("   %d. rect x=%d\ty=%d\tx2h=%d\ty2=%d\n",numOfRec,roi_x0,roi_y0,roi_x1,roi_y1);
-#endif
+          if ( (startDraw == 0) && (abs( roi_x0 - roi_x1 ) > 0) ) 
+          {
+            numOfRec++;
+            printf("   %d. rect x=%d\ty=%d\tx2h=%d\ty2=%d\tscale=%f\tstartDraw=%d\n",numOfRec,roi_x0,roi_y0,roi_x1,roi_y1, scale_factor, startDraw);
 	  strPostfix += " " + to_string( int( min(roi_x0,roi_x1) / scale_factor ) ) + " " + 
                         to_string( int( min(roi_y0,roi_y1) / scale_factor ) ) + " " +
                         to_string( int( ( abs(roi_x1 - roi_x0) ) / scale_factor ) ) + " " + 
                         to_string( int( ( abs(roi_y1 - roi_y0) ) / scale_factor ) );
+          }
         break;
       }
     }
