@@ -26,99 +26,87 @@ originally based on objectmarker.cpp by: achu_wilson@rediffmail.com
 using namespace cv;
 using namespace std;
 
-Mat image;
-Mat image2;
-Mat image3;
+Mat image;  // original image
+Mat image2; // scaled image, where confirmed ROIs are built up for display
+Mat image3; // scratch copy of image2 to display current drawing on top of other ROIs.
+
+std::vector<Rect> rois;
+
 int max_height = 800;
 float scale_factor = 1;
-int roi_x0=0;
-int roi_y0=0;
-int roi_x1=0;
-int roi_y1=0;
-int numOfRec=0;
-int startDraw = 0;
+
 int aspect_x = 1;
 int aspect_y = 1;
+
+int startDraw = 0;
+int roi_x0=0;
+int roi_y0=0;
 int mod_x = 0;
 int mod_y = 0;
-string window_name="";
+
+string windowName="";
 
 void on_mouse(int event,int x,int y,int flag, void *param)
 {
-    if ( event == CV_EVENT_LBUTTONDOWN )
+  // enforce ROI aspect ratio
+  if ( startDraw ) {
+    mod_y = y;
+    if (
+         ( (roi_x0 > x) && (roi_y0 > y) )
+         ||
+         ( (roi_x0 < x) && (roi_y0 < y) )
+       )
+      mod_x = roi_x0 + ( aspect_x * ( y - roi_y0 ) / aspect_y );
+    else
+      mod_x = roi_x0 + ( aspect_x * ( roi_y0 - y ) / aspect_y );
+  }
+
+  if ( event == CV_EVENT_LBUTTONDOWN )
+  {
+    if ( !startDraw )
     {
-        if ( !startDraw )
-        {
-          roi_x0=x;
-          roi_y0=y;
-          startDraw = 1;
-        } else {
-          roi_x1=x;
-          roi_y1=y;
-
-          // enforce ROI aspect ratio
-          if (
-               ( (roi_x0 > x) && (roi_y0 > y) )
-               ||
-               ( (roi_x0 < x) && (roi_y0 < y) )
-             )
-            roi_x1 = roi_x0 + ( aspect_x * ( roi_y1 - roi_y0 ) / aspect_y );
-          else
-            roi_x1 = roi_x0 + ( aspect_x * ( roi_y0 - roi_y1 ) / aspect_y );
-
-          // redraw ROI selection in green when finished
-          image2 = image3.clone();
-          rectangle( image2, cvPoint( roi_x0, roi_y0 ), cvPoint( roi_x1, roi_y1 ), CV_RGB(50,255,50), 1 );
-          imshow( window_name, image2 );
-
-          startDraw = 0;
-        }
-    }
-    if ( event == CV_EVENT_MOUSEMOVE && startDraw )
-    {
-        mod_x = x; 
-        mod_y = y;
-
-        // enforce ROI aspect ratio
-        if (  
-             ( (roi_x0 > x) && (roi_y0 > y) )
-             ||
-             ( (roi_x0 < x) && (roi_y0 < y) )
-           )
-          mod_x = roi_x0 + ( aspect_x * ( mod_y - roi_y0 ) / aspect_y );
-        else
-          mod_x = roi_x0 + ( aspect_x * ( roi_y0 - mod_y ) / aspect_y );
-
-        //redraw ROI selection
-        image2 = image3.clone();
-        rectangle(image2,cvPoint( roi_x0, roi_y0 ),cvPoint( mod_x, mod_y ),CV_RGB(255,0,100),1);
-        imshow(window_name,image2);
-    }
-    if ( event == EVENT_LBUTTONDBLCLK )
-    {
-      roi_x0 = 0;
-      roi_x1 = 0;
-      roi_y0 = 0;
-      roi_y1 = 0;
+      roi_x0=x;
+      roi_y0=y;
+      startDraw = 1;
+    } else {
+      // redraw putative ROI selection in yellow when finished. will be redrawn in green when confirmed with <space>
+      rectangle( image3, cvPoint( roi_x0, roi_y0 ), cvPoint( mod_x, mod_y ), CV_RGB(255,255,50), 1 );
+      imshow( windowName, image3 );
       startDraw = 0;
     }
+  }
+  if ( event == CV_EVENT_MOUSEMOVE && startDraw )
+  {
+    //redraw ROI selection
+    image3 = image2.clone();
+    rectangle(image3,cvPoint( roi_x0, roi_y0 ),cvPoint( mod_x, mod_y ),CV_RGB(255,5,50),1);
+    imshow(windowName,image3);
+  }
+  if ( event == EVENT_LBUTTONDBLCLK )
+  {
+    roi_x0 = 0;
+    roi_y0 = 0;
+    mod_x = 0;
+    mod_y = 0;
+    startDraw = 0;
+  }
 
 }
 
 int main(int argc, char** argv)
 {
   char iKey=0;
-  string strPrefix;
-  string strPostfix;
+  string fileForOutput;
+
   string fullPath;
   string destPath;
 
-  string input_directory = ".";
-  string output_directory = ".";
-  string pos_directory = "positive";
-  string neg_directory = "negative";
-  string positive_file = "pos.txt";
-  string negative_file = "neg.txt";
+  string inputDirectory = ".";
+  string outputDirectory = ".";
+  string positiveDirectory = "positive";
+  string negativeDirectory = "negative";
+  string positiveFile = "pos.txt";
+  string negativeFile = "neg.txt";
 
   struct stat filestat;
   int c;
@@ -128,19 +116,19 @@ int main(int argc, char** argv)
       switch (c)
         {
         case 'o': 
-          output_directory = optarg;
+          outputDirectory = optarg;
           break;
         case 'm':
-          pos_directory = optarg;
+          positiveDirectory = optarg;
           break;
         case 'u':
-          neg_directory = optarg;
+          negativeDirectory = optarg;
           break;
         case 'p':
-          positive_file = optarg;
+          positiveFile = optarg;
           break;
         case 'n':
-          negative_file = optarg;
+          negativeFile = optarg;
           break;
         case 'h':
           max_height = std::stoi(optarg);
@@ -165,72 +153,71 @@ int main(int argc, char** argv)
           abort ();
         }
     else {
-      input_directory = argv[optind];
+      inputDirectory = argv[optind];
       optind++;
     }
   }
 
-  pos_directory = output_directory + "/" + pos_directory;
-  neg_directory = output_directory + "/" + neg_directory;
-  positive_file = pos_directory + "/" + positive_file;
-  negative_file = neg_directory + "/" + negative_file;
+  positiveDirectory = outputDirectory + "/" + positiveDirectory;
+  negativeDirectory = outputDirectory + "/" + negativeDirectory;
+  positiveFile = positiveDirectory + "/" + positiveFile;
+  negativeFile = negativeDirectory + "/" + negativeFile;
 
   /* Create output directories if necessary */
-  DIR *dir_d = opendir( pos_directory.c_str());
+  DIR *dir_d = opendir( positiveDirectory.c_str());
   if ( dir_d == NULL ) {
-    mkdir( pos_directory.c_str(), S_IRWXU | S_IRWXG );
+    mkdir( positiveDirectory.c_str(), S_IRWXU | S_IRWXG );
   } else {
     closedir(dir_d);
   }
 
-  DIR *dir_e = opendir( neg_directory.c_str());
+  DIR *dir_e = opendir( negativeDirectory.c_str());
   if ( dir_e == NULL ) {
-    mkdir( neg_directory.c_str(), S_IRWXU | S_IRWXG );
+    mkdir( negativeDirectory.c_str(), S_IRWXU | S_IRWXG );
   } else {
     closedir(dir_e);
   }
 
   // Open input directory 
-  DIR *dir_p = opendir( input_directory.c_str() );
+  DIR *dir_p = opendir( inputDirectory.c_str() );
   struct dirent *dir_entry_p;
 
   if(dir_p == NULL) {
-    fprintf(stderr, "Failed to open directory %s\n", input_directory.c_str());
+    fprintf(stderr, "Failed to open directory %s\n", inputDirectory.c_str());
     return -1;
   }
 
   // GUI 
-  window_name = "ROI Marking";
-  namedWindow(window_name,1);
-  setMouseCallback(window_name,on_mouse, NULL);
+  windowName = "ROI Marking";
+  namedWindow(windowName,1);
+  setMouseCallback(windowName,on_mouse,NULL);
 
   // init output streams
-  ofstream positives(positive_file.c_str(), std::ofstream::out | std::ofstream::app);
-  ofstream negatives(negative_file.c_str(), std::ofstream::out | std::ofstream::app);
+  ofstream positives(positiveFile.c_str(), std::ofstream::out | std::ofstream::app);
+  ofstream negatives(negativeFile.c_str(), std::ofstream::out | std::ofstream::app);
 
   // Iterate over directory 
   while((dir_entry_p = readdir(dir_p)) != NULL)
   {
     // Skip directories
-    string relPath = input_directory + "/" + dir_entry_p->d_name;
+    string relPath = inputDirectory + "/" + dir_entry_p->d_name;
     if ( stat( relPath.c_str(), &filestat ) == -1 ) continue;
     if (S_ISDIR( filestat.st_mode )) continue;
 
-    strPostfix = "";
+    // Initialize
+    rois.clear();
     roi_x0 = 0;
-    roi_x1 = 0;
     roi_y0 = 0;
-    roi_y1 = 0;
     startDraw = 0;
-    numOfRec = 0;
     scale_factor = 1;
+
 
     if(strcmp(dir_entry_p->d_name, ""))
       fprintf(stderr, "Examining file %s\n", dir_entry_p->d_name);
 
-    strPrefix = dir_entry_p->d_name;
-    fullPath  = input_directory + "/" + strPrefix;
-    printf("Loading image %s\n", strPrefix.c_str());
+    fileForOutput = dir_entry_p->d_name;
+    fullPath  = inputDirectory + "/" + fileForOutput;
+    printf("Loading image %s\n", fileForOutput.c_str());
 
     image = imread(fullPath.c_str(),1);
 
@@ -240,19 +227,19 @@ int main(int argc, char** argv)
         continue;
     }
 
+    // Use scratch version of image for display, scaling down if necessary.
+    Size sz = image.size();
+    if ( sz.height > max_height ) {
+      scale_factor = (float)max_height / (float)sz.height;
+      resize(image, image2, Size(), scale_factor, scale_factor, INTER_AREA);
+    } else {
+      image2 = image.clone();
+    }
+    imshow(windowName,image2);
+
+    // Input loop
     do
     {
-      // Use scratch version of image for display, scaling down if necessary.
-      Size sz = image.size();
-      if ( sz.height > max_height ) {
-        scale_factor = (float)max_height / (float)sz.height;
-        resize(image, image3, Size(), scale_factor, scale_factor, INTER_AREA);
-      } else {
-        image3 = image.clone();
-      }
-      imshow(window_name,image3);
-
-      // Start taking input
       iKey=cvWaitKey(0);
       switch(iKey)
       {
@@ -260,31 +247,49 @@ int main(int argc, char** argv)
           image.release();
           image2.release();
           image3.release();
-          destroyWindow(window_name);
+          destroyWindow(windowName);
           closedir(dir_p);
           return 0;
-        case 32:
-          if ( (startDraw == 0) && (abs( roi_x0 - roi_x1 ) > 0) ) 
+        case 32: // <space> confirms ROI
+          if ( (startDraw == 0) && (abs( roi_x0 - mod_x ) > 0) ) 
           {
-            numOfRec++;
-            printf("   %d. rect x=%d\ty=%d\tx2h=%d\ty2=%d\tscale=%f\tstartDraw=%d\n",numOfRec,roi_x0,roi_y0,roi_x1,roi_y1, scale_factor, startDraw);
-	  strPostfix += " " + to_string( int( min(roi_x0,roi_x1) / scale_factor ) ) + " " + 
-                        to_string( int( min(roi_y0,roi_y1) / scale_factor ) ) + " " +
-                        to_string( int( ( abs(roi_x1 - roi_x0) ) / scale_factor ) ) + " " + 
-                        to_string( int( ( abs(roi_y1 - roi_y0) ) / scale_factor ) );
+            int origin_x = min(roi_x0, mod_x);
+            int origin_y = min(roi_y0, mod_y);
+            int width = abs(mod_x - roi_x0);
+            int height = abs(mod_y - roi_y0);
+            int terminus_x = origin_x + width;
+            int terminus_y = origin_y + height;
+
+            // Scale up to map to original size
+            rois.push_back( Rect( int( origin_x / scale_factor ),
+                                  int( origin_y / scale_factor ),
+                                  int( width / scale_factor ),
+                                  int( height / scale_factor )
+                                )
+                          );
+
+            // Re-draw in green 
+            rectangle( image2, cvPoint( origin_x,origin_y ), cvPoint( terminus_x,terminus_y ), CV_RGB(50,255,50), 1 );
+            imshow(windowName,image2);
           }
+        default: 
+          imshow(windowName,image2);
         break;
       }
     }
-    while(iKey!=97);
+    while( iKey != 97 );
 
-    if (iKey==97) {
-      if (numOfRec > 0) {
-        positives << strPrefix << " "<< numOfRec << strPostfix <<"\n";
-        destPath = pos_directory + "/" + strPrefix;  
+    if ( iKey == 97 ) {
+      if ( rois.size() > 0 ) {
+        positives << fileForOutput << " " << to_string(rois.size());
+        for(std::vector<Rect>::iterator r = rois.begin(); r != rois.end(); ++r) {
+          positives << " " << to_string(r->x) << " " << to_string(r->y) << " " << to_string(r->width) << " " << to_string(r->height);
+        }
+        positives << "\n";
+        destPath = positiveDirectory + "/" + fileForOutput;  
       } else {
-        negatives << strPrefix << "\n";
-        destPath = neg_directory + "/" + strPrefix;
+        negatives << fileForOutput << "\n";
+        destPath = negativeDirectory + "/" + fileForOutput;
       }
     }
     rename( fullPath.c_str(), destPath.c_str() );
@@ -293,7 +298,7 @@ int main(int argc, char** argv)
   image.release();
   image2.release();
   image3.release();
-  destroyWindow(window_name);
+  destroyWindow(windowName);
   closedir(dir_p);
   return 0;
 }
