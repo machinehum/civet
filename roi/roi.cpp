@@ -27,8 +27,9 @@ using namespace cv;
 using namespace std;
 
 Mat image;  // original image
-Mat image2; // scaled image, where confirmed ROIs are built up for display
-Mat image3; // scratch copy of image2 to display current drawing on top of other ROIs.
+Mat image2; // scaled image, left clean for resets
+Mat image3; // scaled image, where confirmed ROIs are built up for display
+Mat image4; // scratch copy of image3 to display current drawing on top of other ROIs.
 
 std::vector<Rect> rois;
 
@@ -69,18 +70,19 @@ void on_mouse(int event,int x,int y,int flag, void *param)
       roi_y0=y;
       startDraw = 1;
     } else {
-      // redraw putative ROI selection in yellow when finished. will be redrawn in green when confirmed with <space>
-      rectangle( image3, cvPoint( roi_x0, roi_y0 ), cvPoint( mod_x, mod_y ), CV_RGB(255,255,50), 1 );
-      imshow( windowName, image3 );
+      // redraw putative ROI selection in yellow when finished. 
+      // will be redrawn in green if confirmed with <space>
+      rectangle( image4, cvPoint( roi_x0, roi_y0 ), cvPoint( mod_x, mod_y ), CV_RGB(255,255,50), 1 );
+      imshow( windowName, image4 );
       startDraw = 0;
     }
   }
   if ( event == CV_EVENT_MOUSEMOVE && startDraw )
   {
     //redraw ROI selection
-    image3 = image2.clone();
-    rectangle(image3,cvPoint( roi_x0, roi_y0 ),cvPoint( mod_x, mod_y ),CV_RGB(255,5,50),1);
-    imshow(windowName,image3);
+    image4 = image3.clone();
+    rectangle(image4,cvPoint( roi_x0, roi_y0 ),cvPoint( mod_x, mod_y ),CV_RGB(255,5,50),1);
+    imshow(windowName,image4);
   }
   if ( event == EVENT_LBUTTONDBLCLK )
   {
@@ -110,9 +112,11 @@ int main(int argc, char** argv)
 
   struct stat filestat;
   int c;
+  string optString = "o:m:u:p:n:h:x:y:";
+  string needsArgs = "omupnhxy";
 
   while (optind < argc) {
-    if ((c = getopt(argc, argv, "o:m:u:p:n:h:x:y:")) != -1) 
+    if ((c = getopt(argc, argv, optString.c_str())) != -1) 
       switch (c)
         {
         case 'o': 
@@ -140,7 +144,7 @@ int main(int argc, char** argv)
           aspect_y = std::stoi(optarg);
           break;
         case '?':
-          if (optopt == 'd' || optopt == 'p' || optopt == 'n')
+          if (optString.find(optopt) != std::string::npos) 
             fprintf (stderr, "Option -%c requires an argument.\n", optopt);
           else if (isprint (optopt))
             fprintf (stderr, "Unknown option `-%c'.\n", optopt);
@@ -211,7 +215,6 @@ int main(int argc, char** argv)
     startDraw = 0;
     scale_factor = 1;
 
-
     if(strcmp(dir_entry_p->d_name, ""))
       fprintf(stderr, "Examining file %s\n", dir_entry_p->d_name);
 
@@ -235,7 +238,8 @@ int main(int argc, char** argv)
     } else {
       image2 = image.clone();
     }
-    imshow(windowName,image2);
+    image3 = image2.clone();
+    imshow(windowName,image3);
 
     // Input loop
     do
@@ -243,13 +247,17 @@ int main(int argc, char** argv)
       iKey=cvWaitKey(0);
       switch(iKey)
       {
-        case 27:
+        case 27: // <escape> exits
           image.release();
           image2.release();
           image3.release();
+          image4.release();
           destroyWindow(windowName);
           closedir(dir_p);
           return 0;
+        case 99: // 'c' clears
+          image3 = image2.clone();
+          imshow(windowName, image3);
         case 32: // <space> confirms ROI
           if ( (startDraw == 0) && (abs( roi_x0 - mod_x ) > 0) ) 
           {
@@ -269,17 +277,22 @@ int main(int argc, char** argv)
                           );
 
             // Re-draw in green 
-            rectangle( image2, cvPoint( origin_x,origin_y ), cvPoint( terminus_x,terminus_y ), CV_RGB(50,255,50), 1 );
-            imshow(windowName,image2);
+            rectangle( image3, cvPoint( origin_x,origin_y ), cvPoint( terminus_x,terminus_y ), CV_RGB(50,255,50), 1 );
+            imshow(windowName,image3);
           }
         default: 
-          imshow(windowName,image2);
+          roi_x0 = 0;
+          roi_y0 = 0;
+          mod_x = 0;
+          mod_y = 0;
+          startDraw = 0;
+          imshow(windowName,image3);
         break;
       }
     }
     while( iKey != 97 );
 
-    if ( iKey == 97 ) {
+    if ( iKey == 97 ) {  // 'a' -a-dvances
       if ( rois.size() > 0 ) {
         positives << fileForOutput << " " << to_string(rois.size());
         for(std::vector<Rect>::iterator r = rois.begin(); r != rois.end(); ++r) {
@@ -298,6 +311,7 @@ int main(int argc, char** argv)
   image.release();
   image2.release();
   image3.release();
+  image4.release();
   destroyWindow(windowName);
   closedir(dir_p);
   return 0;

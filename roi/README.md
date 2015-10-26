@@ -73,10 +73,11 @@ or the C API, is very likely to cause you pain.
 - The rectangle will now turn green to indicate that it is set, and ready for you to 
   confirm. 
 - To confirm and record this ROI, press `<space bar>`.
-- When you are done selecting ROIs on the image, press *a* to move to the next image. 
+- When you are done selecting ROIs on the image, press *a* to advance to the next image. 
   This also triggers the ROIs, if any, to be written to file, and moves the image to
   either the "marked" or "negative" directory (depending on whether any ROIs were
   marked). 
+- Pressing *c* will clear the ROIs on an image if you need to change something. 
 - Continue until all images are marked, or press `<escape>` to quit. Because images are
   moved out of the input directory once they are dealt with, and the positive/negative
   output files are appended to rather than overwritten, you may quit at any time and 
