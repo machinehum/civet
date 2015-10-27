@@ -51,18 +51,18 @@ int detect( string imagePath, string cascadePath, vector<Rect> & rois, int minNb
 void printJSON(string imagePath, vector<Rect> & rois){
   printf("{\n");
   printf("\"path\": \"%s\",\n", imagePath.c_str()); 
-  printf("\"count\": %zd,\n", rois.size());
-  printf("\"objects\": [\n");
-  
-  for (int i = 0; i < rois.size(); i++) {
-    Rect r = rois[i];
-    printf("\t{\"x\": %d, \"y\": %d, \"width\": %d, \"height\": %d }", r.x, r.y, r.width, r.height);
-    if (i < (rois.size() - 1)) {
-      printf(",\n");
+  printf("\"count\": %zd", rois.size());
+  if ( rois.size() > 0 ) {
+    printf(",\n\"objects\": [\n");
+    for (int i = 0; i < rois.size(); i++) {
+      Rect r = rois[i];
+      printf("\t{\"x\": %d, \"y\": %d, \"width\": %d, \"height\": %d }", r.x, r.y, r.width, r.height);
+      if (i < (rois.size() - 1)) {
+        printf(",\n");
+      }
     }
+    printf("\n\t]");
   }
-
-  printf("\n\t]");
   printf("\n}\n");
 }
 
