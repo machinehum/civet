@@ -14,7 +14,7 @@ using namespace std;
 
 char iKey = 0;
 
-int detect( string imagePath, string cascadePath, vector<Rect> & rois, int minNbr, int aspect_x, int aspect_y, bool interactive, string windowName) {
+int detect( string imagePath, string cascadePath, vector<Rect> & rois, int minNbr, bool equalize, bool greyscale, int aspect_x, int aspect_y, bool interactive, string windowName) {
   Mat img = imread(imagePath.c_str(),1);
   Size sz = img.size();
   if ( sz.height < 1 || sz.width < 1 ) {
@@ -28,7 +28,7 @@ int detect( string imagePath, string cascadePath, vector<Rect> & rois, int minNb
     Mat frame_gray;
     cvtColor( img, frame_gray, COLOR_BGR2GRAY );
     equalizeHist( frame_gray, frame_gray );
-    cascade.detectMultiScale(frame_gray, rois, 1.1, minNbr, CV_HAAR_FIND_BIGGEST_OBJECT, Size(aspect_x, aspect_y), Size((aspect_x*100),(aspect_y*100)));  
+    cascade.detectMultiScale(frame_gray, rois, 1.2, minNbr, CV_HAAR_FIND_BIGGEST_OBJECT, Size(aspect_x, aspect_y), Size((aspect_x*70),(aspect_y*70)));  
     //rois = &v; 
     if ( interactive ) {
       for (int i = 0; i < rois.size(); i++) {
@@ -69,7 +69,7 @@ void printJSON(string imagePath, vector<Rect> & rois){
 int main (int argc, char** argv) {
 
   int c;
-  string optString = "c:n:x:y:i";
+  string optString = "c:n:x:y:ieg";
   string needsArgs = "cxyn";
   string cascadeXML = "";
   string inputNode = "";
@@ -77,6 +77,8 @@ int main (int argc, char** argv) {
   int aspect_x = 24;
   int aspect_y = 24;
   bool interactive = false;
+  bool equalize = false;
+  bool greyscale = false;
   struct stat nodeStat;
   struct dirent *dir_entry_p;
   string imagePath = "";
@@ -93,6 +95,12 @@ int main (int argc, char** argv) {
           break;
         case 'i':
           interactive = true;
+          break;
+        case 'e':
+          equalize = true;
+          break;
+        case 'g':
+          greyscale = true;
           break;
         case 'x':
           aspect_x = std::stoi(optarg);
@@ -133,7 +141,7 @@ int main (int argc, char** argv) {
         if ( stat( relPath.c_str(), &nodeStat ) == -1 ) continue;
         if (S_ISDIR( nodeStat.st_mode )) continue;
         if(!strcmp(dir_entry_p->d_name, "")) continue;
-        if ( detect(relPath, cascadeXML, rois, minNbr, aspect_x, aspect_y, interactive, windowName) != -1 ) {
+        if ( detect(relPath, cascadeXML, rois, minNbr, equalize, greyscale, aspect_x, aspect_y, interactive, windowName) != -1 ) {
           if (!firstFile)
             printf(",\n");
           printJSON(relPath, rois);
@@ -142,7 +150,7 @@ int main (int argc, char** argv) {
       }
       printf("]\n}\n");
     } else if( nodeStat.st_mode & S_IFREG ) { // Single file
-      detect(inputNode, cascadeXML, rois, minNbr, aspect_x, aspect_y, interactive, windowName);
+      detect(inputNode, cascadeXML, rois, minNbr, equalize, greyscale, aspect_x, aspect_y, interactive, windowName);
     } else {
       fprintf(stderr, "%s is neither a file nor directory\n", inputNode.c_str());
     }
