@@ -14,7 +14,7 @@ using namespace std;
 
 char iKey = 0;
 
-int detect( string imagePath, string cascadePath, vector<Rect> & rois, int aspect_x, int aspect_y, bool interactive, string windowName) {
+int detect( string imagePath, string cascadePath, vector<Rect> & rois, int minNbr, int aspect_x, int aspect_y, bool interactive, string windowName) {
   Mat img = imread(imagePath.c_str(),1);
   Size sz = img.size();
   if ( sz.height < 1 || sz.width < 1 ) {
@@ -25,7 +25,10 @@ int detect( string imagePath, string cascadePath, vector<Rect> & rois, int aspec
   if (cascade.load(cascadePath)) {
     //vector<Rect> rois;
     //std::vector<Rect> v;
-    cascade.detectMultiScale(img, rois, 1.1, 3, CV_HAAR_FIND_BIGGEST_OBJECT, Size(aspect_x, aspect_y));  
+    Mat frame_gray;
+    cvtColor( img, frame_gray, COLOR_BGR2GRAY );
+    equalizeHist( frame_gray, frame_gray );
+    cascade.detectMultiScale(frame_gray, rois, 1.1, minNbr, CV_HAAR_FIND_BIGGEST_OBJECT, Size(aspect_x, aspect_y), Size((aspect_x*100),(aspect_y*100)));  
     //rois = &v; 
     if ( interactive ) {
       for (int i = 0; i < rois.size(); i++) {
@@ -34,6 +37,10 @@ int detect( string imagePath, string cascadePath, vector<Rect> & rois, int aspec
       }
       imshow( windowName, img );
       iKey=waitKey(0);
+        if (iKey == 27 ) {
+          img.release(); 
+          exit(1);
+        }
     }
 
   }
@@ -62,10 +69,11 @@ void printJSON(string imagePath, vector<Rect> & rois){
 int main (int argc, char** argv) {
 
   int c;
-  string optString = "c:x:y:i";
-  string needsArgs = "cxy";
+  string optString = "c:n:x:y:i";
+  string needsArgs = "cxyn";
   string cascadeXML = "";
   string inputNode = "";
+  int minNbr = 3;
   int aspect_x = 24;
   int aspect_y = 24;
   bool interactive = false;
@@ -92,6 +100,9 @@ int main (int argc, char** argv) {
         case 'y':
           aspect_y = std::stoi(optarg);
           break;
+        case 'n':
+          minNbr = std::stoi(optarg);
+          break;  
         case '?':
           if (needsArgs.find(optopt) != std::string::npos)
             fprintf (stderr, "Option -%c requires an argument.\n", optopt);
@@ -122,7 +133,7 @@ int main (int argc, char** argv) {
         if ( stat( relPath.c_str(), &nodeStat ) == -1 ) continue;
         if (S_ISDIR( nodeStat.st_mode )) continue;
         if(!strcmp(dir_entry_p->d_name, "")) continue;
-        if ( detect(relPath, cascadeXML, rois, aspect_x, aspect_y, interactive, windowName) != -1 ) {
+        if ( detect(relPath, cascadeXML, rois, minNbr, aspect_x, aspect_y, interactive, windowName) != -1 ) {
           if (!firstFile)
             printf(",\n");
           printJSON(relPath, rois);
@@ -131,7 +142,7 @@ int main (int argc, char** argv) {
       }
       printf("]\n}\n");
     } else if( nodeStat.st_mode & S_IFREG ) { // Single file
-      detect(inputNode, cascadeXML, rois, aspect_x, aspect_y, interactive, windowName);
+      detect(inputNode, cascadeXML, rois, minNbr, aspect_x, aspect_y, interactive, windowName);
     } else {
       fprintf(stderr, "%s is neither a file nor directory\n", inputNode.c_str());
     }

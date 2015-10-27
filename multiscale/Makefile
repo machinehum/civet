@@ -13,6 +13,6 @@ detect-multiscale.o: detect-multiscale.cpp
 .PHONY: clean
 
 install:
-	sudo cp detect-multiscale /usr/local/bin/
+	cp detect-multiscale /usr/local/bin/
 clean:
 	rm -rf *.o core* $(ALL)
